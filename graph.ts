@@ -4,7 +4,12 @@ import {
   applyResolversEnhanceMap,
   ResolversEnhanceMap,
 } from "@generated/type-graphql";
-import { AuthChecker, Authorized, buildSchema } from "type-graphql";
+import {
+  AuthChecker,
+  Authorized,
+  UseMiddleware,
+  buildSchema,
+} from "type-graphql";
 import { ApolloServer } from "apollo-server";
 import { prisma } from "./db.server";
 
@@ -16,7 +21,20 @@ export async function startGraph() {
   const resolversEnhanceMap: ResolversEnhanceMap = {
     Attestation: {
       attestation: [Authorized()],
-      attestations: [Authorized()],
+      attestations: [
+        Authorized(),
+        UseMiddleware(async (action, next) => {
+          // Get the current args
+          const args = action.args as any;
+
+          if (!args.take) {
+            args.take = 100;
+          }
+
+          // Call the next middleware or resolver
+          return next();
+        }),
+      ],
       findFirstAttestation: [Authorized()],
       aggregateAttestation: [Authorized()],
       createOneAttestation: [Authorized(["ADMIN"])],
